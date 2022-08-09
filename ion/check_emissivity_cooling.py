@@ -24,6 +24,9 @@ volume = np.load("volume.npy", allow_pickle=True)
 data = athdf("./ion.out2.00000.athdf", quantities=["Cooling"])
 cooling = -data['Cooling'] * volume * ncells
 
+print("LUMINOSITY: ", np.sum(emission))
+print("CRITICAL MDOT: ", np.sum(emission)/c**2)
+
 # Radial average of cooling and emission
 cooling = np.average(cooling, axis=(0, 1))
 emission = np.average(emission, axis=(0, 1))
