@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pdb
 
+from scipy.integrate import quad
+
 import matplotlib as mpl
 mpl.rcParams['figure.dpi'] = 150
 
@@ -17,32 +19,23 @@ lorwidth = 6.265e8/(4.*np.pi)
 a = lorwidth / doppwidth
 
 tcoeff = 1.698161839733523
-Pnm = 2.45
 
-def midpoint_diff(t):
-  midpoints = 0.5*(t[1:]+t[:-1])
-  dt = np.diff(midpoints)
-  dt = np.insert(dt, 0, midpoints[1] - midpoints[0])
-  dt = np.append(dt, midpoints[-1] - midpoints[-2])
-  return dt
+def p(t): # Original function
+    return np.exp(-(tdiff/t)**2) * lo_efreq * np.exp(-lo_efreq * t)
 
-def p(t):
-    return np.exp(-(tdiff/t)**2) * lo_efreq * Pnm * np.exp(-lo_efreq * t)
-
-def f(t):
-    return lo_efreq * Pnm * np.exp(-lo_efreq * t)
-
-def f_int(llim, t):
-    return Pnm * (np.exp(-lo_efreq * llim) - np.exp(-lo_efreq * t))
+def f(t): # Comparison function
+    return lo_efreq * np.exp(-lo_efreq * t)
 
 def sample():
     reject = True
+    n_rejections = 0
     while reject:
         # Sample an area under f(t)
-        B_samp = A * np.random.random()
+        B_samp = np.random.random()
 
         # Find t for which the area under f(t) to the left of t is equal to B_samp
-        t_samp = - 1. / lo_efreq * np.log(np.exp(-lo_efreq * llim) - B_samp/Pnm)
+        # Left bound for t integral is light crossing time
+        t_samp = - 1. / lo_efreq * np.log(np.exp(-lo_efreq * tlc) - B_samp)
 
         # Sample a value between 0 and f(t_samp)
         f_samp = f(t_samp) * np.random.random()
@@ -51,38 +44,40 @@ def sample():
         if f_samp <= p(t_samp):
             reject = False
         else: 
-            pass
-    return t_samp
+            n_rejections += 1
+    return t_samp, n_rejections
 
 def rejection_method(r0, tau0):
-    global tlc, tdiff, lo_efreq, A, pnorm, llim, rlim
+    global tlc, tdiff, lo_efreq
     tlc = r0 / c
     tdiff = tlc * (a * tau0)**(1./3.)
     lo_efreq = 1./(tcoeff * (a * tau0)**(1./3.))
 
-    tvals = np.logspace(0, 7, 200)
-
-    # Find effective limits of the p(t) function
-    test_pvals = p(tvals)
-    thresh_inds = np.where(test_pvals >= 1e-6)[0]
-    llim = tvals[thresh_inds[0]]
-    rlim = tvals[thresh_inds[-1]]
-
-    tvals = np.logspace(np.log10(llim), np.log10(rlim), 200)
-
-    A = f_int(llim, rlim)
-    pnorm = np.sum(p(tvals)*midpoint_diff(tvals))
-
-    Nsamps = 100000
+    Nsamps = 10000
     tsamps = np.zeros(Nsamps)
+    rejections = np.zeros(Nsamps)
     for i in range(Nsamps):
-        tsamps[i] = sample()
+        tsamps[i], rejections[i] = sample()
     
+    # Normalize and plot original distribution
+    tvals = np.logspace(np.log10(tlc), 3, 200)
+    pnorm, _ = quad(p, tlc, np.inf)
     pdata = np.array([tvals, p(tvals)/pnorm])
-    fdata = np.array([tvals, f(tvals)/pnorm])
 
-    return tvals, pdata, fdata, tsamps
+    return tvals, pdata, tsamps, rejections
 
+
+r0 = 1e11
+tau0 = 1e7
+
+tvals, pdata, tsamps, rejections = rejection_method(r0, tau0)
+plt.hist(rejections, bins=25, histtype='step')
+plt.xlabel('number of rejections')
+plt.ylabel('N')
+plt.title('R = 1e11, tau0 = 1e7')
+plt.show()
+
+'''
 r0=[1e8, 1e9, 1e10, 1e11]
 tau0=1e7
 
@@ -99,11 +94,11 @@ for i, ax in enumerate([ax1, ax2, ax3, ax4]):
     else:
         tauval = tau0
         r0val = r0[i]
-    tvals, pdata, fdata, tsamps = rejection_method(r0val, tauval)
-    bins = np.logspace(np.log10(llim), np.log10(rlim), 75)
+    tvals, pdata, tsamps = rejection_method(r0val, tauval)
+    bins = np.logspace(np.log10(tlc), 3, 75)
     ax.hist(tsamps, bins=bins, density=True, log=True, histtype='step', alpha=0.75, label='sampled times')
-    ax.plot(tvals, p(tvals)/pnorm, alpha=0.75, label='$P(t)$')
-    ax.plot(tvals, f(tvals)/pnorm, 'r--', alpha=0.75, label='$f(t)$, comparison function')
+    ax.plot(*pdata, alpha=0.75, label='$P(t)$')
+#    ax.plot(tvals, f(tvals)/pnorm, 'r--', alpha=0.75, label='$f(t)$, comparison function')
     ax.set_xscale('log')
     ax.set_ylim((1e-6, 0.5))
     ax.text(0.7, 0.9, r"$\tau_0 = ${:.0e}".format(tauval), transform=ax.transAxes)
@@ -116,3 +111,4 @@ ax4.legend(bbox_to_anchor=(0.0, -0.2), loc='upper center', fontsize='small', nco
 plt.tight_layout()
 plt.subplots_adjust(bottom=0.15, wspace=0, hspace=0)
 plt.show()
+'''
