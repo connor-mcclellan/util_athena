@@ -16,18 +16,22 @@ print("SONIC POINT: {:.3e} CM".format(r_sonic))
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("infile", type=str)
+parser.add_argument("basename", type=str)
 parser.add_argument("-t", "--title", type=str)
 args = parser.parse_args()
 
 
-data = athdf(args.infile, quantities=["RadforceF1", "RadforceS1", "rho"])
-radius = data['x1v']
 
-radaccelf = data['RadforceF1'] / data['rho']
+prim = athdf(args.basename+'.out1.00000.athdf', quantities=["rho"])
+#mcmom = athdf(args.basename+'.out2.00000.athdf', quantities=[""])
+mcsrc = athdf(args.basename+'.out3.00000.athdf', quantities=["RadforceF1", "RadforceS1"])
+radius = prim['x1v']
+
+# TODO: Temporary flip after Shane's updates to moments
+radaccelf = mcsrc['RadforceS1'] / prim['rho']
 radaccelf = np.average(radaccelf, axis=(0, 1))
 
-radaccels = data['RadforceS1'] / data['rho']
+radaccels = mcsrc['RadforceF1'] / prim['rho']
 radaccels = np.average(radaccels, axis=(0, 1))
 
 surf_g = GM / radius**2
