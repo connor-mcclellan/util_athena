@@ -118,7 +118,7 @@ def plot_frame(
     )
     ax1.set_yscale("log")
     ax1.set_xscale("log")
-    ax1.set_ylim((1e-8, 1e4))
+    ax1.set_ylim((1e-12, 1e4))
     ax1.set_ylabel("acceleration (cm s-2)")
     ax1.invert_xaxis()
 
@@ -130,7 +130,7 @@ def plot_frame(
     ax2.plot(tau, -er, 'k--', marker='o', ms=3)
     ax2.plot(tau, fr, color='r', marker='o', ms=3)
     ax2.plot(tau, -fr, 'r--', marker='o', ms=3)
-    ax2.set_ylabel("er and fr")
+    ax2.set_ylabel("er * c, fr")
     ax2.set_xscale("log")
     ax2.set_yscale("log")
     ax2.yaxis.tick_right()
@@ -248,6 +248,22 @@ def plot_frame(
     ]
 
     fmtlegend = ax1.legend(
+        handles=formatlegend,
+        loc="upper right",
+        bbox_to_anchor=[1.0, 0.98],
+        frameon=False,
+    )
+
+    # Panel 2 legend
+    formatlegend = [
+        Line2D(
+            [1], [0], color="k", marker="o", linestyle="None", label=r"$cE_r$"
+        ),
+        Line2D(
+            [1], [0], color="r", marker="o", linestyle="None", label=r"$F_r$"
+        )
+    ]
+    fmtlegend = ax2.legend(
         handles=formatlegend,
         loc="upper right",
         bbox_to_anchor=[1.0, 0.98],
